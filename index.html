@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Document</title>
+  </head>
+  <body>
+    <button onclick="cargarDatos()">Cargar Datos</button>
+    <button onclick="sinMapReduce()">Sin MapReduce</button>
+    <button onclick="conMapReduce2()">Con MapReduce 2N</button>
+    <button onclick="conMapReduce1()">Con MapReduce 1N</button>
+    <output id="result"></output>
+
+    <script>
+      let datos = [];
+      let datosParte1 = [],
+        datosParte2 = [];
+      function cargarDatos() {
+        fetch("https://data.cityofnewyork.us/api/views/25th-nujf/rows.json")
+          .then(response => response.json())
+          .then(responseJSON => {
+            datos = responseJSON.data
+              .concat(responseJSON.data)
+              .concat(responseJSON.data)
+              .concat(responseJSON.data)
+              .concat(responseJSON.data)
+              .concat(responseJSON.data)
+              .concat(responseJSON.data)
+              .concat(responseJSON.data)
+              .concat(responseJSON.data);
+            datosParte1 = datos.slice(0, Math.round(datos.length / 2));
+            datosParte2 = datos.slice(
+              Math.round(datos.length / 2),
+              datos.length
+            );
+            alert("Datos Cargados");
+          });
+      }
+      function sinMapReduce() {
+        const comezo = Date.now();
+        console.log("empezó el trabajo", comezo);
+        let counter = 0;
+        for (let index = 0; index < datos.length; index++) {
+          const element = datos[index];
+          const nombre = element[11];
+          if (nombre[0] == "m" || nombre[0] == "M") {
+            counter++;
+          }
+        }
+        console.log("Resultado: ", { M: counter });
+        const termino = Date.now();
+        console.log("terminó el trabajo", termino);
+        console.log(
+          "duración del trabajo fue ",
+          termino - comezo + "milisegundos"
+        );
+      }
+
+      const nodo1 = new Worker("nodo1.js");
+      const nodo2 = new Worker("nodo2.js");
+      const nodoIndependiente = new Worker("nodo3.js");
+
+      function conMapReduce2() {
+        const comezo = Date.now();
+        console.log("empezó el trabajo", comezo);
+        nodo1.postMessage({ cmd: "procesar", msg: datosParte1 });
+        nodo2.postMessage({ cmd: "procesar", msg: datosParte2 });
+        nodo1.addEventListener(
+          "message",
+          function(e) {
+            if (e.data.type === "message") {
+              console.log(e.data.text);
+            } else {
+              reducer("M", e.data.value);
+            }
+          },
+          false
+        );
+        nodo2.addEventListener(
+          "message",
+          function(e) {
+            if (e.data.type === "message") {
+              console.log(e.data.text);
+            } else {
+              reducer("M", e.data.value);
+            }
+          },
+          false
+        );
+        const consolidado = {};
+        let nodeCounter = 0;
+        function reducer(key, value) {
+          if (consolidado[key]) {
+            consolidado[key] = value + consolidado[key];
+          } else {
+            consolidado[key] = value;
+          }
+          nodeCounter++;
+          if (nodeCounter == 2) {
+            console.log("Resultado con MapReduce: ", consolidado);
+            const termino = Date.now();
+            console.log("terminó el trabajo", termino);
+            console.log(
+              "duración del trabajo fue ",
+              termino - comezo + "milisegundos"
+            );
+          }
+        }
+      }
+
+      function conMapReduce1() {
+        const comezo = Date.now();
+        console.log("empezó el trabajo", comezo);
+        nodoIndependiente.postMessage({ cmd: "procesar", msg: datos });
+        nodoIndependiente.addEventListener(
+          "message",
+          function(e) {
+            if (e.data.type === "message") {
+              console.log(e.data.text);
+            } else {
+              reducer("M", e.data.value);
+            }
+          },
+          false
+        );
+        const consolidado = {};
+        let nodeCounter = 0;
+        function reducer(key, value) {
+          if (consolidado[key]) {
+            consolidado[key] = value + consolidado[key];
+          } else {
+            consolidado[key] = value;
+          }
+          nodeCounter++;
+          if (nodeCounter == 1) {
+            console.log("Resultado con MapReduce: ", consolidado);
+            const termino = Date.now();
+            console.log("terminó el trabajo", termino);
+            console.log(
+              "duración del trabajo fue ",
+              termino - comezo + "milisegundos"
+            );
+          }
+        }
+      }
+    </script>
+  </body>
+</html>
